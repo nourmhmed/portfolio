@@ -9,11 +9,43 @@
 
     html.className = html.className.replace(/\bno-js\b/g, '') + ' js ';
 
-
-
-   /* Animations
+    /* Visitor Tracking
     * -------------------------------------------------- */
-    const tl = anime.timeline( {
+    const ssVisitorTracking = function() {
+        if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+            console.log("Visitor tracking disabled in development");
+            return;
+        }
+
+        const visitorData = {
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            screenWidth: screen.width,
+            screenHeight: screen.height,
+            language: navigator.language,
+            referrer: document.referrer || 'direct',
+            pageUrl: window.location.href,
+            pageTitle: document.title
+        };
+
+        fetch('/track-visitor', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(visitorData)
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        })
+        .catch(error => console.error('Visitor tracking error:', error));
+    };
+
+    /* Animations
+    * -------------------------------------------------- */
+    const tl = anime.timeline({
         easing: 'easeInOutCubic',
         duration: 800,
         autoplay: false
@@ -40,7 +72,7 @@
         opacity: [0, 1]
     }, '-=200')
     .add({
-        targets: [ '.s-intro .text-pretitle', '.s-intro .text-huge-title'],
+        targets: ['.s-intro .text-pretitle', '.s-intro .text-huge-title'],
         translateX: [100, 0],
         opacity: [0, 1],
         delay: anime.stagger(400)
@@ -65,12 +97,9 @@
         opacity: [0, 1]
     }, '-=800');
 
-
-
-   /* Preloader
+    /* Preloader
     * -------------------------------------------------- */
     const ssPreloader = function() {
-
         const preloader = document.querySelector('#preloader');
         if (!preloader) return;
         
@@ -83,20 +112,13 @@
             });
 
             tl.play();
+            ssVisitorTracking();
         });
+    };
 
-        // force page scroll position to top at page refresh
-        // window.addEventListener('beforeunload' , function () {
-        //     // window.scrollTo(0, 0);
-        // });
-
-    }; // end ssPreloader
-
-
-   /* Mobile Menu
+    /* Mobile Menu
     * ---------------------------------------------------- */ 
     const ssMobileMenu = function() {
-
         const toggleButton = document.querySelector('.mobile-menu-toggle');
         const mainNavWrap = document.querySelector('.main-nav-wrap');
         const siteBody = document.querySelector("body");
@@ -111,8 +133,6 @@
 
         mainNavWrap.querySelectorAll('.main-nav a').forEach(function(link) {
             link.addEventListener("click", function(event) {
-
-                // at 800px and below
                 if (window.matchMedia('(max-width: 800px)').matches) {
                     toggleButton.classList.toggle('is-clicked');
                     siteBody.classList.toggle('menu-is-open');
@@ -121,44 +141,28 @@
         });
 
         window.addEventListener('resize', function() {
-
-            // above 800px
             if (window.matchMedia('(min-width: 801px)').matches) {
                 if (siteBody.classList.contains('menu-is-open')) siteBody.classList.remove('menu-is-open');
                 if (toggleButton.classList.contains("is-clicked")) toggleButton.classList.remove("is-clicked");
             }
         });
+    };
 
-    }; // end ssMobileMenu
-
-
-   /* Highlight active menu link on pagescroll
+    /* ScrollSpy
     * ------------------------------------------------------ */
     const ssScrollSpy = function() {
-
         const sections = document.querySelectorAll(".target-section");
 
-        // Add an event listener listening for scroll
         window.addEventListener("scroll", navHighlight);
 
         function navHighlight() {
-        
-            // Get current scroll position
             let scrollY = window.pageYOffset;
         
-            // Loop through sections to get height(including padding and border), 
-            // top and ID values for each
             sections.forEach(function(current) {
                 const sectionHeight = current.offsetHeight;
                 const sectionTop = current.offsetTop - 50;
                 const sectionId = current.getAttribute("id");
             
-               /* If our current scroll position enters the space where current section 
-                * on screen is, add .current class to parent element(li) of the thecorresponding 
-                * navigation link, else remove it. To know which link is active, we use 
-                * sectionId variable we are getting while looping through sections as 
-                * an selector
-                */
                 if (scrollY > sectionTop && scrollY <= sectionTop + sectionHeight) {
                     document.querySelector(".main-nav a[href*=" + sectionId + "]").parentNode.classList.add("current");
                 } else {
@@ -166,24 +170,19 @@
                 }
             });
         }
+    };
 
-    }; // end ssScrollSpy
-
-
-   /* Animate elements if in viewport
+    /* View Animate
     * ------------------------------------------------------ */
     const ssViewAnimate = function() {
-
         const blocks = document.querySelectorAll("[data-animate-block]");
 
         window.addEventListener("scroll", viewportAnimation);
 
         function viewportAnimation() {
-
             let scrollY = window.pageYOffset;
 
             blocks.forEach(function(current) {
-
                 const viewportHeight = window.innerHeight;
                 const triggerTop = (current.offsetTop + (viewportHeight * .2)) - viewportHeight;
                 const blockHeight = current.offsetHeight;
@@ -206,47 +205,37 @@
                 }
             });
         }
+    };
 
-    }; // end ssViewAnimate
-
-
-   /* Swiper
+    /* Swiper
     * ------------------------------------------------------ */ 
     const ssSwiper = function() {
-
         const mySwiper = new Swiper('.swiper-container', {
-
             slidesPerView: 1,
             pagination: {
                 el: '.swiper-pagination',
                 clickable: true,
             },
             breakpoints: {
-                // when window width is > 400px
                 401: {
                     slidesPerView: 1,
                     spaceBetween: 20
                 },
-                // when window width is > 800px
                 801: {
                     slidesPerView: 2,
                     spaceBetween: 32
                 },
-                // when window width is > 1200px
                 1201: {
                     slidesPerView: 2,
                     spaceBetween: 80
                 }
             }
          });
+    };
 
-    }; // end ssSwiper
-
-
-   /* Lightbox
+    /* Lightbox
     * ------------------------------------------------------ */
     const ssLightbox = function() {
-
         const folioLinks = document.querySelectorAll('.folio-list__item-link');
         const modals = [];
 
@@ -256,7 +245,6 @@
                 document.querySelector(modalbox),
                 {
                     onShow: function(instance) {
-                        //detect Escape key press
                         document.addEventListener("keydown", function(event) {
                             event = event || window.event;
                             if (event.keyCode === 27) {
@@ -275,18 +263,14 @@
                 modals[index].show();
             });
         });
+    };
 
-    };  // end ssLightbox
-
-
-   /* Alert boxes
+    /* Alert boxes
     * ------------------------------------------------------ */
     const ssAlertBoxes = function() {
-
         const boxes = document.querySelectorAll('.alert-box');
   
         boxes.forEach(function(box){
-
             box.addEventListener('click', function(event) {
                 if (event.target.matches(".alert-box__close")) {
                     event.stopPropagation();
@@ -297,16 +281,12 @@
                     }, 500)
                 }    
             });
-
         })
+    };
 
-    }; // end ssAlertBoxes
-
-
-   /* Smoothscroll
+    /* Smoothscroll
     * ------------------------------------------------------ */
     const ssMoveTo = function(){
-
         const easeFunctions = {
             easeInQuad: function (t, b, c, d) {
                 t /= d;
@@ -342,14 +322,11 @@
         triggers.forEach(function(trigger) {
             moveTo.registerTrigger(trigger);
         });
+    };
 
-    }; // end ssMoveTo
-
-
-   /* Initialize
+    /* Initialize
     * ------------------------------------------------------ */
     (function ssInit() {
-
         ssPreloader();
         ssMobileMenu();
         ssScrollSpy();
@@ -358,7 +335,6 @@
         ssLightbox();
         ssAlertBoxes();
         ssMoveTo();
-
     })();
 
 })(document.documentElement);
