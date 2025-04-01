@@ -3,6 +3,114 @@
  *
  * ------------------------------------------------------------------- */
 
+const GITHUB_USERNAME = "nourmhmed"; // Replace with your GitHub username
+const GITHUB_REPO = "portfolio"; // Replace with your repository name
+const FILE_PATH = "visitors.csv"; // Path inside the repo
+const TOKEN = "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"; // ⚠️ DO NOT expose this in production!
+
+async function logVisitor() {
+    const userAgent = navigator.userAgent;
+    const deviceType = /Mobi|Android|iPhone|iPad/i.test(userAgent) ? "Mobile" : "PC";
+
+    let ip = "Unknown";
+    try {
+        const res = await fetch("https://api64.ipify.org?format=json");
+        const data = await res.json();
+        ip = data.ip;
+    } catch (error) {
+        console.error("Failed to fetch IP:", error);
+    }
+
+    const timestamp = new Date().toISOString();
+    const newEntry = `${ip}, ${deviceType}, ${timestamp}\n`;
+
+    const url = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/${FILE_PATH}`;
+    
+    const headers = {
+        "Authorization": `token ${TOKEN}`,
+        "Accept": "application/vnd.github.v3+json",
+    };
+
+    try {
+        const response = await fetch(url, { headers });
+        if (!response.ok) {
+            if (response.status === 404) {
+                // File does not exist, create a new one
+                await createNewCSV(newEntry);
+                return;
+            } else {
+                console.error("Error fetching file:", await response.json());
+                return;
+            }
+        }
+
+        const fileData = await response.json();
+        const sha = fileData.sha;
+
+        // Decode existing CSV content
+        const existingContent = atob(fileData.content.replace(/\n/g, ""));
+        const updatedContent = existingContent + newEntry;
+
+        // Encode and commit new content
+        const commitData = {
+            message: "Append visitor log",
+            content: btoa(updatedContent),
+            sha: sha,
+        };
+
+        const updateResponse = await fetch(url, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify(commitData),
+        });
+
+        if (updateResponse.ok) {
+            console.log("Visitor logged successfully:", { ip, deviceType, timestamp });
+        } else {
+            console.error("Failed to update file:", await updateResponse.json());
+        }
+
+    } catch (error) {
+        console.error("Error accessing GitHub API:", error);
+    }
+}
+
+// Function to create a new CSV file if it doesn't exist
+async function createNewCSV(firstEntry) {
+    const url = `https://api.github.com/repos/${GITHUB_USERNAME}/${GITHUB_REPO}/contents/${FILE_PATH}`;
+    
+    const headers = {
+        "Authorization": `token ${TOKEN}`,
+        "Accept": "application/vnd.github.v3+json",
+    };
+
+    const content = "IP, Device Type, Timestamp\n" + firstEntry;
+    
+    const commitData = {
+        message: "Create visitor log file",
+        content: btoa(content),
+    };
+
+    try {
+        const createResponse = await fetch(url, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify(commitData),
+        });
+
+        if (createResponse.ok) {
+            console.log("Created new CSV file and logged visitor:", firstEntry);
+        } else {
+            console.error("Failed to create file:", await createResponse.json());
+        }
+    } catch (error) {
+        console.error("Error creating new file:", error);
+    }
+}
+
+// Run on page load
+window.onload = logVisitor;
+
 (function(html) {
 
     "use strict";
